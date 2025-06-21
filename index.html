@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ocean Store - Daily Report</title>
+  <meta name="viewport" content="width=850">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body {
+      background: linear-gradient(120deg, #e0eafc 0%, #cfdef3 100%);
+      font-family: 'Cairo', 'Poppins', Arial, sans-serif;
+      min-height: 100vh;
+    }
+    .dashboard-container {
+      max-width: 850px;
+      margin: 32px auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 8px 40px 0 rgba(44,62,80,0.13);
+      padding: 32px 24px;
+    }
+    h1, h2, h3, h4 { color: #1976d2; font-weight: 700; }
+    .section-title { border-bottom: 2px solid #43e97b; padding-bottom: 6px; margin-bottom: 18px; }
+    .summary-box {
+      background: #e3fcec;
+      border-left: 6px solid #43e97b;
+      padding: 14px 24px;
+      border-radius: 12px;
+      margin-top: 18px;
+      font-size: 1.1rem;
+    }
+    .table th, .table td { vertical-align: middle; }
+    .badge { font-size: 1rem; }
+    .deficit-emp-list .row { margin-bottom: 8px; }
+    @media (max-width: 900px) {
+      .dashboard-container { padding: 12px 2vw; }
+    }
+    @media (max-width: 600px) {
+      .dashboard-container { padding: 4px 1vw; }
+      h1 { font-size: 1.3rem; }
+      h2 { font-size: 1.1rem; }
+    }
+    /* PDF/Print */
+    @media print {
+      body { background: #fff !important; }
+      .dashboard-container { box-shadow: none !important; }
+      .btn, .form-switch, .form-check, .form-section, .text-end { display: none !important; }
+      #pdf-report > div {
+        box-shadow: none !important;
+        border: none !important;
+        width: 794px !important;
+        min-width: 794px !important;
+        max-width: 794px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    }
+
+    #pdf-report > div {
+      width: 794px; /* عرض A4 بالبيكسل */
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10);
+      padding: 32px 24px;
+      font-size: 1rem;
+    }
+
+    #pdf-report h3.section-title {
+      color: #1976d2;
+      border-bottom: 2px solid #43e97b;
+      padding-bottom: 6px;
+      margin-bottom: 18px;
+      margin-top: 32px;
+    }
+    #pdf-report .summary-box {
+      background: #e3fcec;
+      border-left: 6px solid #43e97b;
+      padding: 14px 24px;
+      border-radius: 12px;
+      margin-top: 18px;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container" id="report">
+    <div class="d-flex align-items-center mb-4">
+      <img src="شعار شفاف للارسال والمحادثات.png" alt="Logo" style="width:56px;height:56px;border-radius:12px;margin-right:16px;">
+      <div>
+        <h1 class="mb-0">Ocean Store - Daily Report</h1>
+        <div class="text-muted" style="font-size:1.1rem;">Date: <input type="date" id="report-date" class="form-control d-inline-block w-auto" style="font-size:1rem;" /></div>
+      </div>
+    </div>
+
+    <!-- Cash Deficit Section -->
+    <div>
+      <h3 class="section-title">Cash Deficit</h3>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input" type="checkbox" id="deficitSwitch" />
+        <label class="form-check-label" for="deficitSwitch">هل يوجد عجز؟</label>
+      </div>
+      <div id="deficitFields" class="d-none">
+        <div class="mb-2">
+          <label>إجمالي العجز (ريال):</label>
+          <input type="number" class="form-control w-auto d-inline-block" id="total-deficit" />
+        </div>
+        <div id="employee-deficit-list" class="deficit-emp-list"></div>
+        <button class="btn btn-sm btn-outline-secondary mb-2" type="button" onclick="addEmployeeDeficit()">إضافة موظف</button>
+      </div>
+    </div>
+
+    <!-- Sales Table -->
+    <div class="mt-4">
+      <h3 class="section-title">Daily Sales</h3>
+      <table class="table table-bordered table-striped table-hover text-center mb-2">
+        <thead class="table-primary">
+          <tr>
+            <th>Program</th>
+            <th>Total Sales</th>
+            <th>Total Cost</th>
+            <th>Net Profit</th>
+            <th>Coin Rate</th>
+          </tr>
+        </thead>
+        <tbody id="sales-table">
+          <tr>
+            <td>Barty Star</td>
+            <td><input type="number" class="form-control sales" /></td>
+            <td><input type="number" class="form-control cost" /></td>
+            <td><input type="number" class="form-control profit" /></td>
+            <td><input type="number" class="form-control coin" /></td>
+          </tr>
+          <tr>
+            <td>Sada</td>
+            <td><input type="number" class="form-control sales" /></td>
+            <td><input type="number" class="form-control cost" /></td>
+            <td><input type="number" class="form-control profit" /></td>
+            <td><input type="number" class="form-control coin" /></td>
+          </tr>
+          <tr>
+            <td>Hawa</td>
+            <td><input type="number" class="form-control sales" /></td>
+            <td><input type="number" class="form-control cost" /></td>
+            <td><input type="number" class="form-control profit" /></td>
+            <td><input type="number" class="form-control coin" /></td>
+          </tr>
+          <tr>
+            <td>Sylla</td>
+            <td><input type="number" class="form-control sales" /></td>
+            <td><input type="number" class="form-control cost" /></td>
+            <td><input type="number" class="form-control profit" /></td>
+            <td><input type="number" class="form-control coin" /></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="summary-box">
+        <strong>إجمالي صافي الربح:</strong> <span id="total-profit">0</span> ريال
+        <span id="top-program" class="ms-3"></span>
+      </div>
+    </div>
+
+    <!-- Period Analysis -->
+    <div class="mt-4">
+      <h3 class="section-title">Period Analysis</h3>
+      <div class="row g-2 mb-2">
+        <div class="col"><input type="date" class="form-control" id="period-date" placeholder="Date" /></div>
+        <div class="col"><input type="number" class="form-control" id="period-sales" placeholder="Net Sales" /></div>
+        <div class="col"><input type="text" class="form-control" id="period-top-program" placeholder="Top Program" /></div>
+        <div class="col-auto"><button class="btn btn-primary" onclick="addPeriodData()">Add Day</button></div>
+      </div>
+      <ul id="period-list" class="mb-2"></ul>
+      <button class="btn btn-success mb-2" onclick="generatePeriodAnalysis()">تحليل الفترة</button>
+      <div id="period-analysis" class="mt-2"></div>
+    </div>
+
+    <!-- Notes -->
+    <div class="mt-4">
+      <h3 class="section-title">ملاحظات</h3>
+      <textarea class="form-control" id="notes" rows="2"></textarea>
+    </div>
+
+    <!-- Export -->
+    <div class="text-end mt-4">
+      <button class="btn btn-secondary" onclick="previewReport()">معاينة التقرير</button>
+      <button class="btn btn-danger" onclick="exportPDF()">تصدير PDF</button>
+      <button class="btn btn-info" onclick="exportJPG()">تصدير كصورة JPG</button>
+    </div>
+
+    <!-- Preview Report -->
+    <div id="pdf-report" class="mt-4"></div>
+  </div>
+
+  <script>
+    // Cash Deficit
+    document.getElementById("deficitSwitch").addEventListener("change", e => {
+      document.getElementById("deficitFields").classList.toggle("d-none", !e.target.checked);
+    });
+    function addEmployeeDeficit() {
+      const list = document.getElementById("employee-deficit-list");
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `
+        <div class="col"><input type="text" class="form-control" placeholder="اسم الموظف" /></div>
+        <div class="col"><input type="number" class="form-control" placeholder="قيمة العجز" /></div>
+        <div class="col">
+          <select class="form-control">
+            <option value="Yes">تم تسجيل فاتورة</option>
+            <option value="No">لم تسجل فاتورة</option>
+          </select>
+        </div>
+      `;
+      list.appendChild(row);
+    }
+
+    // Sales Table Calculations
+    function calculateTotalProfit() {
+      let total = 0, max = -Infinity, top = "";
+      document.querySelectorAll("#sales-table tr").forEach(row => {
+        const profit = parseFloat(row.querySelector(".profit").value) || 0;
+        const name = row.children[0].innerText;
+        total += profit;
+        if (profit > max) { max = profit; top = name; }
+      });
+      document.getElementById("total-profit").innerText = total.toFixed(2);
+      document.getElementById("top-program").innerHTML = top ? `<span class="badge bg-success">الأكثر ربحًا: ${top}</span>` : "";
+    }
+    document.querySelectorAll(".profit").forEach(input => {
+      input.addEventListener("input", calculateTotalProfit);
+    });
+
+    // Period Analysis
+    const periodData = [];
+    function addPeriodData() {
+      const date = document.getElementById("period-date").value;
+      const sales = parseFloat(document.getElementById("period-sales").value);
+      const topProgram = document.getElementById("period-top-program").value;
+      if (!date || isNaN(sales) || !topProgram) return alert("أدخل كل البيانات");
+      periodData.push({ date, sales, topProgram });
+      document.getElementById("period-list").innerHTML += `<li>${date}: ${sales} ريال - الأعلى: ${topProgram}</li>`;
+      document.getElementById("period-date").value = "";
+      document.getElementById("period-sales").value = "";
+      document.getElementById("period-top-program").value = "";
+    }
+    function generatePeriodAnalysis() {
+      if (periodData.length === 0) return;
+      let totalSales = 0, bestDay = "", bestSale = -Infinity, programMap = {};
+      periodData.forEach(entry => {
+        totalSales += entry.sales;
+        if (entry.sales > bestSale) { bestSale = entry.sales; bestDay = entry.date; }
+        programMap[entry.topProgram] = (programMap[entry.topProgram] || 0) + 1;
+      });
+      const topProgram = Object.keys(programMap).reduce((a, b) => programMap[a] > programMap[b] ? a : b);
+      document.getElementById("period-analysis").innerHTML = `
+        <div class="summary-box">
+          <strong>إجمالي أرباح الفترة:</strong> ${totalSales.toFixed(2)} ريال<br>
+          <strong>أفضل يوم:</strong> ${bestDay} (${bestSale} ريال)<br>
+          <strong>الأكثر تكرارًا:</strong> ${topProgram}
+        </div>
+      `;
+    }
+
+    // Preview & Export PDF
+    function previewReport() {
+      // Build sales table
+      const salesRows = Array.from(document.querySelectorAll("#sales-table tr")).map(row => {
+        const tds = row.querySelectorAll("td");
+        return {
+          program: tds[0]?.innerText || "",
+          sales: tds[1]?.querySelector("input")?.value || "",
+          cost: tds[2]?.querySelector("input")?.value || "",
+          profit: tds[3]?.querySelector("input")?.value || "",
+          coin: tds[4]?.querySelector("input")?.value || ""
+        };
+      });
+      let salesTableHTML = `
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+          <thead>
+            <tr style="background:#e3f2fd;">
+              <th style="border:1px solid #1976d2;padding:6px;">Program</th>
+              <th style="border:1px solid #1976d2;padding:6px;">Total Sales</th>
+              <th style="border:1px solid #1976d2;padding:6px;">Total Cost</th>
+              <th style="border:1px solid #1976d2;padding:6px;">Net Profit</th>
+              <th style="border:1px solid #1976d2;padding:6px;">Coin Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${salesRows.map(row => `
+              <tr>
+                <td style="border:1px solid #1976d2;padding:6px;">${row.program}</td>
+                <td style="border:1px solid #1976d2;padding:6px;">${row.sales}</td>
+                <td style="border:1px solid #1976d2;padding:6px;">${row.cost}</td>
+                <td style="border:1px solid #1976d2;padding:6px;">${row.profit}</td>
+                <td style="border:1px solid #1976d2;padding:6px;">${row.coin}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      // Build deficit employees
+      let deficitHTML = "";
+      if (document.getElementById("deficitSwitch").checked) {
+        const totalDeficit = document.getElementById("total-deficit").value || "0";
+        const empRows = Array.from(document.querySelectorAll("#employee-deficit-list .row")).map(row => {
+          const name = row.children[0].querySelector("input").value || "";
+          const value = row.children[1].querySelector("input").value || "";
+          const invoice = row.children[2].querySelector("select").value === "Yes" ? "تم تسجيل فاتورة" : "لم تسجل فاتورة";
+          return `<tr><td>${name}</td><td>${value}</td><td>${invoice}</td></tr>`;
+        }).join('');
+        deficitHTML = `
+          <div class="summary-box mb-2"><strong>إجمالي العجز:</strong> ${totalDeficit} ريال</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#e3f2fd;">
+                <th style="border:1px solid #1976d2;padding:6px;">الموظف</th>
+                <th style="border:1px solid #1976d2;padding:6px;">قيمة العجز</th>
+                <th style="border:1px solid #1976d2;padding:6px;">فاتورة؟</th>
+              </tr>
+            </thead>
+            <tbody>${empRows}</tbody>
+          </table>
+        `;
+      } else {
+        deficitHTML = `<div class="text-muted">لا يوجد عجز اليوم.</div>`;
+      }
+      // Build period analysis
+      let periodHTML = document.getElementById("period-analysis").innerHTML || "";
+      // Build notes
+      let notes = document.getElementById("notes").value || "";
+      // Build top program
+      let topProgram = document.getElementById("top-program").innerHTML || "";
+
+      document.getElementById("pdf-report").innerHTML = `
+        <div>
+          <div class="d-flex align-items-center mb-4">
+            <img src="شعار شفاف للارسال والمحادثات.png" alt="Logo" style="width:56px;height:56px;border-radius:12px;margin-right:16px;">
+            <div>
+              <h1 class="mb-0">Ocean Store - Daily Report</h1>
+              <div class="text-muted" style="font-size:1.1rem;">Date: ${document.getElementById("report-date").value || new Date().toLocaleDateString()}</div>
+            </div>
+          </div>
+          <h3 class="section-title">Cash Deficit</h3>
+          ${deficitHTML}
+          <h3 class="section-title">Daily Sales</h3>
+          ${salesTableHTML}
+          <div class="summary-box">
+            <strong>إجمالي صافي الربح:</strong> ${document.getElementById("total-profit").innerText} ريال
+            ${topProgram}
+          </div>
+          <h3 class="section-title">Period Analysis</h3>
+          ${periodHTML}
+          <h3 class="section-title">ملاحظات</h3>
+          <div style="background:#f8fafc;padding:12px 16px;border-radius:10px;min-height:40px;">${notes}</div>
+        </div>
+      `;
+    }
+
+    function exportPDF() {
+      // ابنِ التقرير أولاً
+      previewReport();
+      // اجعل العنصر ظاهرًا
+      document.getElementById("pdf-report").style.display = "block";
+      // انتظر لحظة حتى يُرسم التقرير في الـ DOM
+      setTimeout(() => {
+        const reportContent = document.querySelector("#pdf-report > div");
+        if (!reportContent) {
+          alert("لم يتم بناء التقرير بشكل صحيح!");
+          return;
+        }
+        html2pdf().set({
+          margin: 0,
+          filename: `Ocean_Report_${document.getElementById("report-date").value || new Date().toISOString().split("T")[0]}.pdf`,
+          image: { type: 'jpeg', quality: 1 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#fff" },
+          jsPDF: { unit: 'px', format: [794, 1123], orientation: 'portrait' }
+        }).from(reportContent).save();
+      }, 200); // 200ms كافية غالبًا
+    }
+
+    function exportJPG() {
+      previewReport(); // ابنِ التقرير أولاً
+      document.getElementById("pdf-report").style.display = "block";
+      setTimeout(() => {
+        const reportContent = document.querySelector("#pdf-report > div");
+        if (!reportContent) {
+          alert("لم يتم بناء التقرير بشكل صحيح!");
+          return;
+        }
+        html2canvas(reportContent, {backgroundColor: "#fff", scale: 2}).then(canvas => {
+          const link = document.createElement('a');
+          link.download = `Ocean_Report_${document.getElementById("report-date").value || new Date().toISOString().split("T")[0]}.jpg`;
+          link.href = canvas.toDataURL("image/jpeg", 1.0);
+          link.click();
+        });
+      }, 200);
+    }
+  </script>
+</body>
+</html>
